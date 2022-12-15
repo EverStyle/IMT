@@ -3,18 +3,31 @@ package com.example.imt;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.annotation.SuppressLint;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 
-import java.util.Objects;
+import com.example.sqliteapp.DatabaseHelper;
+
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
 
 public class result extends AppCompatActivity {
+    DatabaseHelper databaseHelper;
+    SQLiteDatabase db;
     EditText result;
     TextView opi1;
     String body;
@@ -22,24 +35,25 @@ public class result extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_result);
+        databaseHelper = new DatabaseHelper(getApplicationContext());
         result = (EditText) findViewById(R.id.result);
         opi1 = (TextView) findViewById(R.id.opi1);
         Bundle arguments = getIntent().getExtras();
         float rost = Float.parseFloat(arguments.get("rost").toString());
         float ves = Float.parseFloat(arguments.get("ves").toString());
-        float god = Float.parseFloat(arguments.get("god").toString());
         float rost1 = rost /100;
         float res = ves/(rost1*rost1);
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(result.this);
-        @SuppressLint("CommitPrefEdits") SharedPreferences.Editor editor = sharedPreferences.edit();
-        String IMT = sharedPreferences.getString("IMT", "unknown");
-        if (Objects.equals(IMT, "unknown")) {
-            editor.putString("IMT", String.valueOf(res));
-        }
-        else {
-            editor.putString("IMT", IMT+"\n" + String.valueOf(res));
-        }
-        editor.commit();
+        Date currentDate = new Date();
+        DateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
+        String dateText = dateFormat.format(currentDate);
+        db = databaseHelper.getReadableDatabase();
+
+        ContentValues cv = new ContentValues();
+        cv.put(DatabaseHelper.COLUMN_VALUE, res);
+        cv.put(DatabaseHelper.COLUMN_DATE, dateText);
+        db.insert(DatabaseHelper.TABLE, null, cv);
+        db.close();
+
         result.setText(String.valueOf(res));
         if(res<16) {
             opi1.setText("Выраженный дифицит массы тела.\n ");
@@ -70,6 +84,7 @@ public class result extends AppCompatActivity {
             body = "ultra_fat";
         }
     }
+
     public void checkResult(View view) {
         Intent intent = new Intent(getApplicationContext(), recommend.class);
         intent.putExtra("body", body);
